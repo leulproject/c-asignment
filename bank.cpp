@@ -28,6 +28,41 @@ T accept(string prompt, string error_message){
     cout << prompt;
     return errorcheck<T>(error_message);
 }
+struct address
+{
+    string country;
+    string city;
+    string subcity;
+    string wereda;
+    int housenumber;
+};
+
+struct person
+{
+    string name;
+    struct dateofbirth
+    {
+        int date;
+        int month;
+        int year;
+    };
+    address paddress;
+    string gender;  
+};
+struct transaction
+{
+    int trasaction_number;
+    transaction* after = NULL;
+};
+struct account
+{
+    person customer;
+    int bankaccount;
+    
+    account* next = NULL;
+};
+
+
 
 int main(){
 
