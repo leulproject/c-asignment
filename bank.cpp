@@ -53,7 +53,8 @@ struct person
         int year;
     }bithday;
     address paddress;
-    string gender;  
+    string gender;
+    int phonenumber;  
 };
 struct transaction
 {
@@ -64,24 +65,34 @@ struct account
 {
     person customer;
     int bankaccount;
+    string username;
+    string password;
     account* next = NULL;
 };
 struct administrator
 {
     person admin;
+    string username;
     string password;
+    string id;
+    string branch;
 };
+
+
 account* account_initializer();
-account* create(int , account*);
+account* create_account(int , account*);
+void list_of_admin(administrator []);
 
 int main(){
+    administrator listadmin[5];
+    list_of_admin(listadmin);
+
     account* last = account_initializer();
-    last = create(last->bankaccount,last);
-    cout<<last->customer.name.first_name;
+    last = create_account(last->bankaccount,last);
 
     return 0;
 }
-account* create(int lastaccount, account* then){
+account* create_account(int lastaccount, account* then){
     account bank_customer;
     bank_customer.customer.name.first_name =  accept<string>("Name: ","Enter only letters");
     bank_customer.customer.name.middle_name =  accept<string>("Middle Name: ","Enter only letters");
@@ -95,11 +106,26 @@ account* create(int lastaccount, account* then){
     bank_customer.customer.paddress.subcity = accept<string>("subcity: ","Enter a Subcity");
     bank_customer.customer.paddress.wereda = accept<int>("Wereda: ","Enter a number");
     bank_customer.customer.paddress.housenumber = accept<int>("House number: ","Enter a number");
+    bank_customer.customer.phonenumber = accept<int>("Phonenumber : ","Enter  only Numbers");
     bank_customer.bankaccount = lastaccount+1213;
+    bank_customer.username = accept<string>("Enter username"," ");
+    bank_customer.password = accept<string>("Enter password", " ");
     bank_customer.next = then;
     account* customer = new account;
     *customer = bank_customer;
     return customer;
+}
+void list_of_admin(administrator admin[]){
+admin[1] = { { {"Abebe","Kebede","Alemu"}, {12,5,1985}, {"Ethiopia","Addis Ababa","Bole",3,2211}, "male" }, "abebe_k", "pass123", "ADM001", "Bole" };
+
+admin[2] = { { {"Marta","Sime","Tsegaye"}, {7,11,1990}, {"Ethiopia","Addis Ababa","Lideta",6,1203}, "female" }, "marta_s", "marta@90", "ADM002", "Lideta" };
+
+admin[3] = { { {"Getahun","Bekele","Hunde"}, {20,3,1978}, {"Ethiopia","Addis Ababa","Arada",4,9876}, "male" }, "geta_b", "g!eta78", "ADM003", "Arada" };
+
+admin[4] = { { {"Hana","Mesfin","Tadese"}, {15,8,1988}, {"Ethiopia","Addis Ababa","Gulele",2,4432}, "female" }, "hana_m", "hana1988", "ADM004", "Gulele" };
+
+admin[0] = { { {"Samuel","Wondimu","Hailu"}, {1,1,1992}, {"Ethiopia","Addis Ababa","Nifas Silk",5,7788}, "male" }, "sam_w", "sam@92", "ADM005", "Nifas Silk" };
+
 }
 account* account_initializer(){
     account* person1 = new account{{{"Abebe","Kebede","Ayele"},{15,3,1985},{"Ethiopia","Addis Ababa","Arada",3,2345},"male"},10000001,NULL};
