@@ -4,7 +4,7 @@
 using namespace std;
 
 template <typename T>
-T errorcheck(string error_message){
+T errorcheck(string error_message,int isitnumber = 0){
     T val;
     string input;
     bool error_free = false;
@@ -19,15 +19,19 @@ T errorcheck(string error_message){
             cout << error_message << endl;
         }
     } while (!error_free);
+    if(!isitnumber)
+        return val;
+    else{
 
-    return val;
-}
+    }
+    }
 
 template <typename T>
 T accept(string prompt, string error_message){
     cout << prompt;
     return errorcheck<T>(error_message);
 }
+
 struct address
 {
     std::string country;
@@ -67,7 +71,7 @@ struct account
     int bankaccount;
     string username;
     string password;
-    account* next = NULL;
+    account* next ;
 };
 struct administrator
 {
@@ -84,6 +88,10 @@ account* create_account(int , account*);
 void list_of_admin(administrator []);
 
 int main(){
+    cout<<"welcome to our bank";
+    cout<<"1 for user ";
+    cout<<"2 for admin ";
+
     administrator listadmin[5];
     list_of_admin(listadmin);
 
@@ -92,6 +100,21 @@ int main(){
 
     return 0;
 }
+bool login(){
+    cout<<"welcome to our bank"<<endl;
+    cout<<"1 for user "<<endl;
+    cout<<"2 for admin "<<endl;
+    int respond = accept<int>("Enter: ","Enter only number");
+    while (respond != 1 && respond != 2){
+        cout<<"Enter only 1 or 2 \n";
+        respond = accept<int>("Enter: ","Enter only number");
+    }
+    if(respond == 2){
+        cout<<"1. create account\n";
+        cout<<"2. edit account\n";
+    }
+}
+
 account* create_account(int lastaccount, account* then){
     account bank_customer;
     bank_customer.customer.name.first_name =  accept<string>("Name: ","Enter only letters");
