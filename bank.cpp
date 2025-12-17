@@ -34,6 +34,13 @@ T accept(string prompt, string error_message){
     cout << prompt;
     return errorcheck<T>(error_message);
 }
+void removeTrailingCR(string &s)
+{
+    if(!s.empty() && s.back() == '\r') // check last character
+    {
+        s.pop_back(); // remove it only if it is '\r'
+    }
+}
 
 struct Transaction{
     int accountId;
@@ -144,6 +151,7 @@ int telecom(int index)
             vector<moneyfile> list;//open a vector to store all lines
             string line = "";
                 while(getline(f,line)){//copy row to line string
+                    removeTrailingCR(line);
                     moneyfile m;//open temporary moneyfile variable
                     string tempo;
                     stringstream ss(line);
@@ -208,7 +216,7 @@ int transfer(int index){
         return 0;
     }
     string line  = "";
-
+    removeTrailingCR(line);
     while(getline(f,line))
     {
         int temporary_id,temporary_acc;
@@ -244,6 +252,7 @@ int transfer(int index){
         return 0;
     }
     string line2;
+    removeTrailingCR(line2);
     while(getline(p,line2))
     {
         int checkid;
@@ -283,6 +292,7 @@ int transfer(int index){
     f.open("money.csv",ios::in);
         vector<moneyfile> list;
         string lineOfMoney;
+        removeTrailingCR(lineOfMoney);
         while(getline(f,lineOfMoney)){
             stringstream ss3(lineOfMoney);
             string tempo;
@@ -359,6 +369,7 @@ int password(int index)
         string line;
         while(getline(f,line))
         {
+            removeTrailingCR(line);
             stringstream ss(line);
             string temp;
             int id;
@@ -418,6 +429,7 @@ int password(int index)
     vector<account> A;
     string line1;
     while(getline(f,line1)){
+        removeTrailingCR(line1);
         stringstream sss(line1);
         account m;
         string temp1;
@@ -468,6 +480,7 @@ int balance(int index)
     double amount;
     while(getline(f,line))
     {
+        removeTrailingCR(line);
         int id;
         double money;
         string timeStamp,temp;
@@ -502,6 +515,7 @@ int transaction_list(int index)
     string line = "";
     while(getline(f,line))
     {
+        removeTrailingCR(line);
         stringstream ss(line);
         string temp,type;
         string timeStamp;
