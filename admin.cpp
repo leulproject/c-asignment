@@ -9,6 +9,7 @@
 #include <cctype>
 #include <conio.h>
 #include <algorithm>
+#include <cstring>
 using namespace std;
 
 // ------------------ Utility Functions ------------------
@@ -31,10 +32,6 @@ template <typename T>
 T accept(const string& prompt, const string& error_message){
     cout << prompt;
     return errorcheck<T>(error_message);
-}
-
-void clearScreen(){
-    cout << "\033[2J\033[H";
 }
 
 string capitalize(string s){
@@ -104,21 +101,24 @@ string timeTToString(time_t t){
 
 struct Person{
     int id;
-    string fname,mname,lname;
+    char fname[50], mname[50], lname[50];
     struct date{ int day,month,year; } dob;
     char gender;
     struct contact{
-        string country,city,subcity,phoneno;
-        int woreda,houseno;
+        char country[50], city[50], subcity[50], phoneno[20];
+        int woreda, houseno;
     } address;
 };
 
 struct Account{
     int id;
     int bankaccount;
-    string username,password;
+    char username[50], password[50];
 };
-
+struct Admin{
+    int id;
+    char username[50], password[50];
+};
 struct Money{
     int id;
     double money;
@@ -140,16 +140,13 @@ int main(){
     int choice;
     string dummy;
 
-    clearScreen();
     cout << "\t=== BANK ADMIN SYSTEM ===\n\n";
 
     while(!login()){
         cout << "Login failed. Try again.\n";
     }
-    clearScreen();
 
     do{
-        clearScreen();
         cout << "\n--- MAIN MENU ---\n";
         cout << "1. Create Account\n";
         cout << "2. Edit Account\n";
@@ -193,16 +190,12 @@ int login(){
     string userName = accept<string>("User Name: ","Enter your Username: ");
     string passWord = accept<string>("Password: ","Enter password: ");
 
-    fstream acc("admins.csv", ios::in);
+    fstream acc("admins.bank", ios::binary | ios::in);
     if(!acc) return 0;
 
-    string line;
-    while(getline(acc,line)){
-        string usn,pwd,temp; stringstream ss(line);
-        getline(ss,temp,','); // id
-        getline(ss,usn,','); 
-        getline(ss,pwd,',');
-        if(userName==usn && passWord==pwd){ acc.close(); return 1; }
+    Admin a;
+    while(acc.read((char*)&a, sizeof(Admin))){
+        if(userName == string(a.username) && passWord == string(a.password)){ acc.close(); return 1; }
     }
     acc.close();
     return 0;
@@ -211,72 +204,103 @@ int login(){
 // ------------------ Create Account ------------------
 
 void createAccount(){
-    clearScreen();
     cout << "\n--- CREATE ACCOUNT ---\n";
 
-    fstream person("person.csv", ios::app | ios::in);
-    fstream account("account.csv", ios::app | ios::in);
-    fstream money("money.csv", ios::app | ios::in);
+    // open person and money for appending; read account file separately to determine last ids
+    fstream person("person.bank", ios::binary | ios::app);
+    fstream money("money.bank", ios::binary | ios::app);
 
-    Person p;
-    string line,lastLine,temp;
+    Person p = {0};
     int lastId=0,lastAcc=100000;
 
-    while(getline(account,line)) if(!line.empty()) lastLine=line;
-    if(!lastLine.empty()){ stringstream ss(lastLine); getline(ss,temp,','); lastId=stoi(temp); getline(ss,temp,','); lastAcc=stoi(temp); }
+    // read all records from account.bank to get max id/account number
+    fstream accountReader("account.bank", ios::binary | ios::in);
+    Account accRec;
+    while(accountReader.read((char*)&accRec, sizeof(Account))){
+        if(accRec.id > lastId) lastId = accRec.id;
+        if(accRec.bankaccount > lastAcc) lastAcc = accRec.bankaccount;
+    }
+    accountReader.close();
 
     p.id = lastId+1;
     int newAccountNumber=lastAcc+1;
 
-    cin.ignore(numeric_limits<streamsize>::max(),'\n');
 
-    p.fname = inputValidName("First name: ");
-    p.mname = inputValidName("Father's name: ");
-    p.lname = inputValidName("Grandfather's name: ");
+    string temp;
+    cout << "First name: "; getline(cin, temp); strncpy(p.fname, temp.c_str(), 49); p.fname[49]='\0';
+    cout << "Father's name: "; getline(cin, temp); strncpy(p.mname, temp.c_str(), 49); p.mname[49]='\0';
+    cout << "Grandfather's name: "; getline(cin, temp); strncpy(p.lname, temp.c_str(), 49); p.lname[49]='\0';
 
-    do{ cout << "DOB (DD MM YYYY): "; cin >> p.dob.day >> p.dob.month >> p.dob.year;
-        if(!isValidDate(p.dob.day,p.dob.month,p.dob.year)) cout<<"Invalid date.\n";
+    do{
+        cout << "DOB (DD MM YYYY): "; cin >> p.dob.day >> p.dob.month >> p.dob.year;
+        if(!isValidDate(p.dob.day,p.dob.month,p.dob.year)) 
+            cout<<"Invalid date.\n";
     }while(!isValidDate(p.dob.day,p.dob.month,p.dob.year));
 
-    do{ cout << "Gender (M/F): "; cin >> p.gender; p.gender=toupper(p.gender);
-        if(!isValidGender(p.gender)) cout<<"Enter M or F only.\n";
+    do{
+        cout << "Gender (M/F): "; cin >> p.gender; p.gender=toupper(p.gender);
+        if(!isValidGender(p.gender))
+            cout<<"Enter M or F only.\n";
     }while(!isValidGender(p.gender));
 
     cin.ignore(numeric_limits<streamsize>::max(),'\n');
 
-    p.address.country = inputValidName("Country: ");
-    p.address.city = inputValidName("City: ");
-    p.address.subcity = inputValidName("Subcity: ");
+    cout << "Country: "; getline(cin, temp); strncpy(p.address.country, temp.c_str(), 49); p.address.country[49]='\0';
+    cout << "City: "; getline(cin, temp); strncpy(p.address.city, temp.c_str(), 49); p.address.city[49]='\0';
+    cout << "Subcity: "; getline(cin, temp); strncpy(p.address.subcity, temp.c_str(), 49); p.address.subcity[49]='\0';
 
-    do{ cout << "Woreda: "; cin >> p.address.woreda; }while(p.address.woreda<=0);
-    do{ cout << "House number: "; cin >> p.address.houseno; }while(p.address.houseno<=0);
+    do{ 
+        cout << "Woreda: "; cin >> p.address.woreda; 
+    }while(p.address.woreda<=0);
+    do{ 
+        cout << "House number: "; cin >> p.address.houseno; 
+    }while(p.address.houseno<=0);
 
-    do{ cout << "Phone (+251XXXXXXXXX): "; cin >> p.address.phoneno; 
-        if(!isValidPhone(p.address.phoneno)) cout<<"Invalid phone number.\n"; 
-    }while(!isValidPhone(p.address.phoneno));
+    do{ 
+        cout << "Phone (+251XXXXXXXXX): "; 
+        cin >> temp; 
+        if(!isValidPhone(temp)) 
+            cout<<"Invalid phone number.\n"; 
+    }while(!isValidPhone(temp));
+    strncpy(p.address.phoneno, temp.c_str(), 19); 
+    p.address.phoneno[19]='\0';
 
     // Save person
-    person << p.id << "," << p.fname << "," << p.mname << "," << p.lname << ","
-           << p.dob.day << "," << p.dob.month << "," << p.dob.year << ","
-           << p.gender << "," << p.address.country << "," << p.address.city << "," << p.address.subcity << ","
-           << p.address.woreda << "," << p.address.houseno << "," << p.address.phoneno << "\n";
+    person.write((char*)&p, sizeof(Person));
     person.close();
 
     // Account credentials
     string username;
     cout << "Username: "; cin >> username;
     string pwd;
-    do{ pwd = inputPassword(); if(!isValidPassword(pwd)) cout<<"Password must be at least 6 characters.\n"; }while(!isValidPassword(pwd));
+    do{ 
+        pwd = inputPassword(); 
+        if(!isValidPassword(pwd)) 
+            cout<<"Password must be at least 6 characters.\n"; 
+    }while(!isValidPassword(pwd));
 
-    account << p.id << "," << newAccountNumber << "," << username << "," << pwd << "\n";
+    Account acc = {p.id, newAccountNumber};
+    strncpy(acc.username, username.c_str(), 49); 
+    acc.username[49]='\0';
+    strncpy(acc.password, pwd.c_str(), 49); 
+    acc.password[49]='\0';
+
+    // append new account record
+    fstream account("account.bank", ios::binary | ios::app);
+    account.write((char*)&acc, sizeof(Account));
     account.close();
 
     // Initial deposit
     double initial_amount;
-    do{ cout << "Initial deposit (min 50): "; cin >> initial_amount;
-        if(initial_amount<50) cout<<"Minimum 50 required.\n"; }while(initial_amount<50);
-    string time_update=timeTToString(time(0));
-    money << p.id << "," << initial_amount << "," << time_update << "\n";
+    do{ 
+        cout << "Initial deposit (min 50): "; 
+        cin >> initial_amount;
+        if(initial_amount<50) 
+            cout<<"Minimum 50 required.\n"; 
+    }while(initial_amount<50);
+
+    Money mon = {p.id, initial_amount, time(0)};
+    money.write((char*)&mon, sizeof(Money));
     money.close();
 
     cout << "\n✅ Account created successfully! Account number: " << newAccountNumber << endl;
@@ -286,168 +310,416 @@ void createAccount(){
 // ------------------ Edit Account ------------------
 
 void editAccount(){
-    clearScreen();
     cout << "\n--- EDIT ACCOUNT ---\n";
 
     string accNo;
-    cout << "Enter account number to edit: ";
-    cin >> accNo;
-    cin.ignore(numeric_limits<streamsize>::max(),'\n');
+    int matchId = -1;
 
-    fstream account("account.csv", ios::in);
-    if(!account){ cout<<"No account records found.\n"; return; }
+    while(matchId == -1){
+        cout << "Enter account number to edit: ";
+        cin >> accNo;
+        cin.ignore(numeric_limits<streamsize>::max(),'\n');
 
-    int matchId=-1;
-    string line,t;
-    while(getline(account,line)){
-        stringstream ss(line);
-        getline(ss,t,','); int id=stoi(t);
-        getline(ss,t,','); // account number
-        if(accNo==t){ matchId=id; break; }
+        fstream account("account.bank", ios::binary | ios::in);
+        if(!account){ cout<<"No account records found.\n"; return; }
+
+        Account accRec;
+        while(account.read((char*)&accRec, sizeof(Account))){
+            if(to_string(accRec.bankaccount) == accNo){ 
+                matchId=accRec.id; 
+                break; 
+            }
+        }
+        account.close();
+
+        if(matchId == -1) cout<<"Account not found. Try again.\n";
     }
-    account.close();
-    if(matchId==-1){ cout<<"Account not found.\n"; cout<<"Press Enter..."; cin.get(); return; }
 
-    fstream person("person.csv", ios::in);
+    // Read person using sequential access
+    fstream person("person.bank", ios::binary | ios::in | ios::out);
     Person p;
-    while(getline(person,line)){
-        stringstream ss(line);
-        getline(ss,t,','); if(matchId==stoi(t)){
-            p.id=matchId;
-            getline(ss,p.fname,','); getline(ss,p.mname,','); getline(ss,p.lname,',');
-            getline(ss,t); p.dob.day=stoi(t); getline(ss,t); p.dob.month=stoi(t); getline(ss,t); p.dob.year=stoi(t);
-            getline(ss,t); p.gender=t[0];
-            getline(ss,p.address.country,','); getline(ss,p.address.city,','); getline(ss,p.address.subcity,',');
-            getline(ss,t); p.address.woreda=stoi(t); getline(ss,t); p.address.houseno=stoi(t);
-            getline(ss,p.address.phoneno,',');
+    streampos personPos = -1;
+    bool personFound = false;
+    while(person.read((char*)&p, sizeof(Person))){
+        if(p.id == matchId){
+            personFound = true;
+            personPos = person.tellg() - static_cast<std::streamoff>(sizeof(Person));
             break;
         }
     }
+    if(!personFound){
+        cout << "Person record not found.\n";
+        person.close();
+        cout << "Press Enter..."; cin.get();
+        return;
+    }
+
+    cout << "\n--- EDIT ACCOUNT DETAILS ---\n";
+
+    string hold, input;
+
+    cout << "First name [" << p.fname << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.fname, hold.c_str(), 49);
+    cout << "Father's name [" << p.mname << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.mname, hold.c_str(), 49);
+    cout << "Grandfather's name [" << p.lname << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.lname, hold.c_str(), 49);
+
+    // DOB
+    do {
+        cout << "DOB (DD MM YYYY) [" << p.dob.day << " " << p.dob.month << " " << p.dob.year << "]: ";
+        getline(cin, input);
+        if (input.empty()) break;
+        stringstream ss(input);
+        int d, m, y;
+        if (ss >> d >> m >> y && isValidDate(d, m, y)) {
+            p.dob.day = d; p.dob.month = m; p.dob.year = y;
+            break;
+        }
+        cout << "❌ Invalid date.\n";
+    } while (true);
+
+    // Gender
+    do {
+        cout << "Gender (M/F) [" << p.gender << "]: ";
+        getline(cin, input);
+        if (input.empty()) break;
+        char g = toupper(input[0]);
+        if (isValidGender(g)) {
+            p.gender = g;
+            break;
+        }
+        cout << "Enter M or F only.\n";
+    } while (true);
+
+    // Address
+    cout << "Country [" << p.address.country << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.address.country, hold.c_str(), 49);
+    cout << "City [" << p.address.city << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.address.city, hold.c_str(), 49);
+    cout << "Subcity [" << p.address.subcity << "]: "; getline(cin, hold); if(!hold.empty()) strncpy(p.address.subcity, hold.c_str(), 49);
+
+    // Woreda
+    do {
+        cout << "Woreda [" << p.address.woreda << "]: ";
+        getline(cin, input);
+        if (input.empty()) break;
+        try {
+            int w = stoi(input);
+            if (w > 0) { p.address.woreda = w; break; }
+        } catch (...) {}
+        cout << "Woreda must be positive.\n";
+    } while (true);
+
+    // House number
+    do {
+        cout << "House number [" << p.address.houseno << "]: ";
+        getline(cin, input);
+        if (input.empty()) break;
+        try {
+            int h = stoi(input);
+            if (h > 0) { p.address.houseno = h; break; }
+        } catch (...) {}
+        cout << "House number must be positive.\n";
+    } while (true);
+
+    // Phone
+    do {
+        cout << "Phone [" << p.address.phoneno << "]: ";
+        getline(cin, input);
+        if (input.empty()) break;
+        if (isValidPhone(input)) {
+            strncpy(p.address.phoneno, input.c_str(), 19);
+            break;
+        }
+        cout << "Invalid phone number.\n";
+    } while (true);
+
+    // Confirm changes
+    cout << "\n--- CONFIRM CHANGES ---\n";
+    cout << "First Name: " << p.fname << "\n";
+    cout << "Father's Name: " << p.mname << "\n";
+    cout << "Grandfather's Name: " << p.lname << "\n";
+    cout << "DOB: " << p.dob.day << "/" << p.dob.month << "/" << p.dob.year << "\n";
+    cout << "Gender: " << p.gender << "\n";
+    cout << "Country: " << p.address.country << "\n";
+    cout << "City: " << p.address.city << "\n";
+    cout << "Subcity: " << p.address.subcity << "\n";
+    cout << "Woreda: " << p.address.woreda << "\n";
+    cout << "House Number: " << p.address.houseno << "\n";
+    cout << "Phone: " << p.address.phoneno << "\n";
+
+    char confirm;
+    cout << "\nConfirm changes? (y/n): ";
+    cin >> confirm;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    if (toupper(confirm) != 'Y') {
+        person.close();
+        cout << "Changes cancelled.\nPress Enter to continue...";
+        cin.get();
+        return;
+    }
+
+    // Write back the updated person
+    person.seekp(personPos);
+    person.write((char*)&p, sizeof(Person));
     person.close();
 
-    string hold;
-    hold=inputValidName("First name ["+p.fname+"]: ",1); if(!hold.empty()) p.fname=hold;
-    hold=inputValidName("Father's name ["+p.mname+"]: ",1); if(!hold.empty()) p.mname=hold;
-    hold=inputValidName("Grandfather's name ["+p.lname+"]: ",1); if(!hold.empty()) p.lname=hold;
-
-    // rewrite person.csv
-    fstream per("person.csv", ios::in);
-    fstream temp("temp.csv", ios::out);
-    while(getline(per,line)){
-        stringstream ss(line);
-        getline(ss,t,','); if(matchId==stoi(t)){
-            temp << p.id << "," << p.fname << "," << p.mname << "," << p.lname << "\n"; // simplified for brevity
-        } else temp << line << "\n";
-    }
-    per.close(); temp.close();
-    remove("person.csv"); rename("temp.csv","person.csv");
     cout << "✅ Account updated successfully.\nPress Enter to continue..."; cin.get();
 }
 
 // ------------------ Delete Account ------------------
 
 void deleteAccount(){
-    clearScreen();
     cout << "\n--- DELETE ACCOUNT ---\n";
 
-    string accNo; cout << "Enter account number: "; cin >> accNo;
+    string accNo;
+    int matchId = -1;
 
-    fstream account("account.csv", ios::in);
-    if(!account){ cout<<"No accounts found.\n"; return; }
+    while(matchId == -1){
+        cout << "Enter account number: ";
+        cin >> accNo;
 
-    int matchId=-1; string line,t;
-    while(getline(account,line)){
-        stringstream ss(line);
-        getline(ss,t,','); int id=stoi(t);
-        getline(ss,t,','); if(accNo==t){ matchId=id; break; }
+        fstream account("account.bank", ios::binary | ios::in);
+        if(!account){ cout<<"No accounts found.\n"; return; }
+
+        Account accRec;
+        while(account.read((char*)&accRec, sizeof(Account))){
+            if(to_string(accRec.bankaccount) == accNo){ matchId=accRec.id; break; }
+        }
+        account.close();
+
+        if(matchId == -1) cout<<"Account not found. Try again.\n";
     }
-    account.close();
-    if(matchId==-1){ cout<<"Account not found.\nPress Enter..."; cin.get(); return; }
+
+    // Load person details
+    fstream person("person.bank", ios::binary | ios::in);
+    Person p;
+    bool personFound = false;
+    while(person.read((char*)&p, sizeof(Person))){
+        if(p.id == matchId){
+            personFound = true;
+            break;
+        }
+    }
+    person.close();
+    if(!personFound){
+        cout << "Person record not found.\nPress Enter..."; cin.get();
+        return;
+    }
+
+    // Load money details
+    fstream money("money.bank", ios::binary | ios::in);
+    Money m;
+    bool moneyFound = false;
+    while(money.read((char*)&m, sizeof(Money))){
+        if(m.id == matchId){
+            moneyFound = true;
+            break;
+        }
+    }
+    money.close();
+    if(!moneyFound){
+        cout << "Money record not found.\nPress Enter..."; cin.get();
+        return;
+    }
+
+    // Display account details
+    cout << "\nAccount Details:\n";
+    cout << "First Name: " << p.fname << "\n";
+    cout << "Last Name: " << p.lname << "\n";
+    cout << "Date of Birth: " << p.dob.day << "/" << p.dob.month << "/" << p.dob.year << "\n";
+    cout << "Gender: " << p.gender << "\n";
+    cout << "Country: " << p.address.country << "\n";
+    cout << "City: " << p.address.city << "\n";
+    cout << "Subcity: " << p.address.subcity << "\n";
+    cout << "Woreda: " << p.address.woreda << "\n";
+    cout << "House Number: " << p.address.houseno << "\n";
+    cout << "Phone: " << p.address.phoneno << "\n";
+    cout << "Balance: $" << fixed << setprecision(2) << m.money << "\n";
 
     char confirm;
-    cout << "Are you sure to delete? (y/n): "; cin >> confirm;
+    cout << "\nAre you sure to delete this account? (y/n): "; cin >> confirm;
     if(toupper(confirm)!='Y'){ cout<<"Cancelled.\nPress Enter..."; cin.get(); return; }
 
-    // Delete from files
-    vector<string> files = {"person.csv","account.csv","money.csv"};
-    for(string f:files){
-        fstream fin(f); fstream fout("temp.csv", ios::out);
-        while(getline(fin,line)){
-            stringstream ss(line); getline(ss,t,',');
-            if(matchId!=stoi(t)) fout<<line<<"\n";
-        }
-        fin.close(); fout.close();
-        remove(f.c_str()); rename("temp.csv",f.c_str());
+    // Delete from person.bank
+    fstream delPerson("person.bank", ios::binary | ios::in);
+    fstream tempPerson("temp.bank", ios::binary | ios::out);
+    Person delP;
+    while(delPerson.read((char*)&delP, sizeof(Person))){
+        if(delP.id != matchId) tempPerson.write((char*)&delP, sizeof(Person));
     }
+    delPerson.close(); tempPerson.close();
+    remove("person.bank"); rename("temp.bank", "person.bank");
+
+    // Delete from account.bank
+    fstream delAccount("account.bank", ios::binary | ios::in);
+    fstream tempAccount("temp.bank", ios::binary | ios::out);
+    Account delAcc;
+    while(delAccount.read((char*)&delAcc, sizeof(Account))){
+        if(delAcc.id != matchId) tempAccount.write((char*)&delAcc, sizeof(Account));
+    }
+    delAccount.close(); tempAccount.close();
+    remove("account.bank"); rename("temp.bank", "account.bank");
+
+    // Delete from money.bank
+    fstream delMoney("money.bank", ios::binary | ios::in);
+    fstream tempMoney("temp.bank", ios::binary | ios::out);
+    Money delM;
+    while(delMoney.read((char*)&delM, sizeof(Money))){
+        if(delM.id != matchId) tempMoney.write((char*)&delM, sizeof(Money));
+    }
+    delMoney.close(); tempMoney.close();
+    remove("money.bank"); rename("temp.bank", "money.bank");
+
     cout << "✅ Account deleted.\nPress Enter..."; cin.get();
 }
 
 // ------------------ Deposit ------------------
 
 void deposit(){
-    clearScreen();
     cout << "\n--- DEPOSIT ---\n";
 
-    string accNo; double amount;
-    cout << "Enter account number: "; cin >> accNo;
-    cout << "Enter deposit amount: "; cin >> amount;
-    if(amount<=0){ cout<<"Amount must be positive.\nPress Enter..."; cin.get(); return; }
+    string accNo;
+    int matchId = -1;
 
-    fstream account("account.csv", ios::in); int matchId=-1;
-    string line,t;
-    while(getline(account,line)){
-        stringstream ss(line); getline(ss,t,','); int id=stoi(t); getline(ss,t,',');
-        if(accNo==t){ matchId=id; break; }
-    }
-    account.close();
-    if(matchId==-1){ cout<<"Account not found.\nPress Enter..."; cin.get(); return; }
+    while(matchId == -1){
+        cout << "Enter account number: ";
+        cin >> accNo;
 
-    // Update balance
-    fstream money("money.csv", ios::in);
-    fstream temp("temp.csv", ios::out);
-    double curBal=0; bool updated=false;
-    while(getline(money,line)){
-        stringstream ss(line); getline(ss,t,','); double bal;
-        if(matchId==stoi(t)){ getline(ss,t,','); curBal=stod(t)+amount; temp<<matchId<<","<<curBal<<","<<timeTToString(time(0))<<"\n"; updated=true; }
-        else temp<<line<<"\n";
+        fstream account("account.bank", ios::binary | ios::in);
+        Account accRec;
+        while(account.read((char*)&accRec, sizeof(Account))){
+            if(to_string(accRec.bankaccount) == accNo){ matchId=accRec.id; break; }
+        }
+        account.close();
+
+        if(matchId == -1) cout<<"Account not found. Try again.\n";
     }
-    money.close(); temp.close();
-    remove("money.csv"); rename("temp.csv","money.csv");
-    cout << "✅ Deposited successfully. New balance: " << curBal << endl;
+
+    // Load person to display
+    fstream person("person.bank", ios::binary | ios::in);
+    Person p;
+    while(person.read((char*)&p, sizeof(Person))){
+        if(p.id == matchId) break;
+    }
+    person.close();
+
+    cout << "Depositing to account of: " << p.fname << " " << p.mname << " " << p.lname << endl;
+
+    // Load current balance
+    fstream moneyCheck("money.bank", ios::binary | ios::in);
+    Money mCheck;
+    while(moneyCheck.read((char*)&mCheck, sizeof(Money))){
+        if(mCheck.id == matchId) break;
+    }
+    moneyCheck.close();
+
+    cout << "Current balance: " << fixed << setprecision(2) << mCheck.money << endl;
+
+    double amount;
+    do{
+        cout << "Enter deposit amount: ";
+        cin >> amount;
+        if(amount <= 0) cout<<"Amount must be positive. Try again.\n";
+    }while(amount <= 0);
+
+    // Update balance using sequential access
+    fstream money("money.bank", ios::binary | ios::in | ios::out);
+    Money m;
+    streampos moneyPos = -1;
+    bool moneyFound = false;
+    while(money.read((char*)&m, sizeof(Money))){
+        if(m.id == matchId){
+            moneyFound = true;
+            moneyPos = money.tellg() - static_cast<std::streamoff>(sizeof(Money));
+            break;
+        }
+    }
+    if(!moneyFound){
+        cout << "Money record not found.\n";
+        money.close();
+        cout << "Press Enter to continue..."; cin.ignore(); cin.get();
+        return;
+    }
+    m.money += amount;
+    m.lastUpdate = time(0);
+    money.seekp(moneyPos);
+    money.write((char*)&m, sizeof(Money));
+    money.close();
+
+    cout << "✅ Deposited successfully. New balance: " << m.money << endl;
     cout << "Press Enter to continue..."; cin.ignore(); cin.get();
 }
 
 // ------------------ Withdrawal ------------------
 
 void withdrawal(){
-    clearScreen();
     cout << "\n--- WITHDRAW ---\n";
 
-    string accNo; double amount;
-    cout << "Enter account number: "; cin >> accNo;
-    cout << "Enter withdrawal amount: "; cin >> amount;
+    string accNo;
+    int matchId = -1;
 
-    if(amount<=0){ cout<<"Amount must be positive.\nPress Enter..."; cin.get(); return; }
+    while(matchId == -1){
+        cout << "Enter account number: ";
+        cin >> accNo;
 
-    fstream account("account.csv", ios::in); int matchId=-1;
-    string line,t;
-    while(getline(account,line)){
-        stringstream ss(line); getline(ss,t,','); int id=stoi(t); getline(ss,t,',');
-        if(accNo==t){ matchId=id; break; }
+        fstream account("account.bank", ios::binary | ios::in);
+        Account accRec;
+        while(account.read((char*)&accRec, sizeof(Account))){
+            if(to_string(accRec.bankaccount) == accNo){ matchId=accRec.id; break; }
+        }
+        account.close();
+
+        if(matchId == -1) cout<<"Account not found. Try again.\n";
     }
-    account.close();
-    if(matchId==-1){ cout<<"Account not found.\nPress Enter..."; cin.get(); return; }
 
-    fstream money("money.csv", ios::in);
-    fstream temp("temp.csv", ios::out);
-    double curBal=0; bool updated=false;
-    while(getline(money,line)){
-        stringstream ss(line); getline(ss,t,','); double bal;
-        if(matchId==stoi(t)){ getline(ss,t,','); curBal=stod(t); if(amount>curBal){ cout<<"Insufficient balance.\n"; temp<<line<<"\n"; updated=true; break; } curBal-=amount; temp<<matchId<<","<<curBal<<","<<timeTToString(time(0))<<"\n"; updated=true; }
-        else temp<<line<<"\n";
+    // Load person to display
+    fstream person("person.bank", ios::binary | ios::in);
+    Person p;
+    while(person.read((char*)&p, sizeof(Person))){
+        if(p.id == matchId) break;
     }
-    money.close(); temp.close();
-    remove("money.csv"); rename("temp.csv","money.csv");
-    if(updated) cout << "✅ Withdrawal successful. Remaining balance: " << curBal << endl;
+    person.close();
+
+    cout << "Withdrawing from account of: " << p.fname << " " << p.mname << " " << p.lname << endl;
+
+    // Load current balance
+    fstream moneyCheck("money.bank", ios::binary | ios::in);
+    Money mCheck;
+    while(moneyCheck.read((char*)&mCheck, sizeof(Money))){
+        if(mCheck.id == matchId) break;
+    }
+    moneyCheck.close();
+
+    cout << "Current balance: " << fixed << setprecision(2) << mCheck.money << endl;
+
+    double amount;
+    do{
+        cout << "Enter withdrawal amount: ";
+        cin >> amount;
+        if(amount <= 0) cout<<"Amount must be positive. Try again.\n";
+        else if(amount > mCheck.money) cout<<"Insufficient balance. Try again.\n";
+    }while(amount <= 0 || amount > mCheck.money);
+
+    fstream money("money.bank", ios::binary | ios::in | ios::out);
+    Money m;
+    streampos moneyPos = -1;
+    bool moneyFound = false;
+    while(money.read((char*)&m, sizeof(Money))){
+        if(m.id == matchId){
+            moneyFound = true;
+            moneyPos = money.tellg() - static_cast<std::streamoff>(sizeof(Money));
+            break;
+        }
+    }
+    if(!moneyFound){
+        cout << "Money record not found.\n";
+        money.close();
+        cout << "Press Enter to continue..."; cin.ignore(); cin.get();
+        return;
+    }
+    m.money -= amount;
+    m.lastUpdate = time(0);
+    money.seekp(moneyPos);
+    money.write((char*)&m, sizeof(Money));
+    money.close();
+
+    cout << "✅ Withdrawal successful. Remaining balance: " << m.money << endl;
     cout << "Press Enter to continue..."; cin.ignore(); cin.get();
 }
